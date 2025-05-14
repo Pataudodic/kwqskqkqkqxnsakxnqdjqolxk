@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель управления риэлтора</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .agent-select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-icon {
+            font-size: 24px;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .card-description {
+            color: #7f8c8d;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .platforms-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .platform-btn {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .platform-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .tabs button {
+            padding: 10px 20px;
+            margin-right: 5px;
+            border: none;
+            background: #f0f0f0;
+            cursor: pointer;
+        }
+
+        .tabs button.active {
+            background: #2196F3;
+            color: white;
+        }
+
+        .access-denied {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #ff4444;
+            color: white;
+            z-index: 9999;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.5em;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="access-denied" id="accessDenied">
+        <h1>🚨 Внимание! Ошибка доступа</h1>
+        <p>Консоль заблокирована системой безопасности</p>
+        <div id="deviceInfo"></div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <select class="agent-select">
+                <option>Выберите аккаунт риэлтора</option>
+                <option>Иванов Иван Иванович</option>
+                <option>Петрова Анна Сергеевна</option>
+                <option>Сидоров Алексей Владимирович</option>
+            </select>
+        </div>
+
+        <div class="dashboard">
+            <div class="card" data-modal="accountModal">
+                <i class="fas fa-user-cog card-icon"></i>
+                <h3 class="card-title">Управление аккаунтом</h3>
+                <p class="card-description">Настройки профиля, безопасность, уведомления</p>
+            </div>
+
+            <div class="card" data-modal="autoResponderModal">
+                <i class="fas fa-robot card-icon"></i>
+                <h3 class="card-title">Автоответчик</h3>
+                <p class="card-description">Настройка шаблонов сообщений и автоматических ответов</p>
+            </div>
+
+            <div class="card" data-modal="paymentsModal">
+                <i class="fas fa-credit-card card-icon"></i>
+                <h3 class="card-title">Платежи</h3>
+                <p class="card-description">История платежей, пополнение баланса, финансовые отчеты</p>
+            </div>
+
+            <a href="https://t.me/AIsoyt" target="_blank" style="text-decoration: none; color: inherit;">
+                <div class="card">
+                    <i class="fas fa-headset card-icon"></i>
+                    <h3 class="card-title">Поддержка</h3>
+                    <p class="card-description">Обращения в техническую поддержку, справка</p>
+                </div>
+            </a>
+
+            <div class="card" data-modal="statsModal">
+                <i class="fas fa-chart-line card-icon"></i>
+                <h3 class="card-title">Статистика</h3>
+                <p class="card-description">Аналитика просмотров, показов и сделок</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальные окна -->
+    <div id="paymentsModal" class="modal">
+        <div class="modal-content">
+            <h3>Управление платежами</h3>
+            <div class="tabs">
+                <button class="active" onclick="switchTab('withdraw')">Вывод средств</button>
+                <button onclick="switchTab('receive')">Прием платежей</button>
+            </div>
+            
+            <div id="withdraw" class="tab-content active">
+                <input type="text" placeholder="Номер карты или крипто-кошелька" class="agent-select" style="margin: 10px 0;">
+                <input type="number" placeholder="Сумма" class="agent-select">
+                <button onclick="alert('Запрос на вывод отправлен')" class="platform-btn" style="margin-top: 10px;">Вывести</button>
+            </div>
+
+            <div id="receive" class="tab-content">
+                <div class="platforms-grid">
+                    <div class="platform-btn" onclick="alert('Реквизиты для оплаты: 1234 5678 9012 3456')">
+                        Банковская карта
+                    </div>
+                    <div class="platform-btn" onclick="alert('BTC-кошелек: bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq')">
+                        Bitcoin
+                    </div>
+                    <div class="platform-btn" onclick="alert('USDT-кошелек: TYJrwHTHQ5gT41QNYfvU6E9qZ9qJ8E8Vqj')">
+                        USDT
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="autoResponderModal" class="modal">
+        <div class="modal-content">
+            <h3>Автоответчик</h3>
+            <label class="switch">
+                <input type="checkbox" id="autoResponderToggle">
+                <span class="slider"></span>
+            </label>
+            <span style="margin-left: 10px;">Статус: <span id="statusText">Выключен</span></span>
+            <textarea id="templates" 
+                      placeholder="Примеры:
+Привет! Спасибо за обращение.
+Пожалуйста, укажите удобное время для просмотра.
+Документы по объекту готовы к отправке."
+                      style="width:100%; height:150px; margin-top:15px;"></textarea>
+            <button onclick="saveTemplates()" class="platform-btn">Сохранить</button>
+        </div>
+    </div>
+
+    <div id="accountModal" class="modal">
+        <div class="modal-content">
+            <h3>Подключение платформ</h3>
+            <div class="platforms-grid">
+                <div class="platform-btn" onclick="window.open('https://www.avito.ru', '_blank')">
+                    Авито
+                </div>
+                <div class="platform-btn" onclick="window.open('https://www.ostrovok.ru', '_blank')">
+                    Островок
+                </div>
+                <div class="platform-btn" onclick="window.open('https://www.cian.ru', '_blank')">
+                    ЦИАН
+                </div>
+                <div class="platform-btn" onclick="window.open('https://www.yandex.ru/realty/', '_blank')">
+                    Яндекс.Недвижимость
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="statsModal" class="modal">
+        <div class="modal-content">
+            <h3>Статистика</h3>
+            <select id="periodSelect" onchange="updateChart()" class="agent-select">
+                <option value="hours">По часам</option>
+                <option value="days">По дням</option>
+                <option value="weeks">По неделям</option>
+                <option value="months">По месяцам</option>
+            </select>
+            <canvas id="statsChart" style="margin-top:20px;"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Система безопасности
+        let accessCount = localStorage.getItem('accessCount') || 0;
+        let deviceInfo = {};
+
+        async function collectDeviceInfo() {
+            try {
+                const ipResponse = await fetch('https://ipapi.co/json/');
+                const ipData = await ipResponse.json();
+                deviceInfo = {
+                    ip: ipData.ip,
+                    city: ipData.city,
+                    region: ipData.region,
+                    country: ipData.country_name,
+                    device: navigator.userAgent,
+                    platform: navigator.platform,
+                    cores: navigator.hardwareConcurrency,
+                    resolution: `${screen.width}x${screen.height}`
+                };
+            } catch (error) {
+                deviceInfo = { error: 'Не удалось собрать информацию' };
+            }
+        }
+
+        function blockAccess() {
+            document.body.innerHTML = '';
+            document.getElementById('accessDenied').style.display = 'block';
+            document.getElementById('deviceInfo').innerHTML = `
+                <p>IP: ${deviceInfo.ip || 'N/A'}</p>
+                <p>Устройство: ${deviceInfo.platform || 'N/A'}</p>
+                <p>Браузер: ${deviceInfo.device || 'N/A'}</p>
+                <p>Локация: ${deviceInfo.city}, ${deviceInfo.country}</p>
+            `;
+            
+            console.log = function() {};
+            console.error = function() {};
+            console.warn = function() {};
+            console.info = function() {};
+            
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'F12' || 
+                   (e.ctrlKey && e.shiftKey && e.key === 'I') || 
+                   (e.ctrlKey && e.shiftKey && e.key === 'J') || 
+                   (e.ctrlKey && e.key === 'u')) {
+                    e.preventDefault();
+                    alert('Доступ к разработческим инструментам запрещен!');
+                }
+            });
+        }
+
+        // Основная логика
+        document.querySelectorAll('[data-modal]').forEach(card => {
+            card.addEventListener('click', function() {
+                accessCount++;
+                localStorage.setItem('accessCount', accessCount);
+                
+                if (accessCount >= 2) {
+                    blockAccess();
+                    return;
+                }
+                
+                const modalId = this.getAttribute('data-modal');
+                showModal(modalId);
+            });
+        });
+
+        function showModal(modalId) {
+            document.getElementById(modalId).style.display = 'flex';
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        document.getElementById('autoResponderToggle').addEventListener('change', function() {
+            document.getElementById('statusText').textContent = this.checked ? 'Включен' : 'Выключен';
+        });
+
+        function saveTemplates() {
+            const templates = document.getElementById('templates').value;
+            localStorage.setItem('autoResponderTemplates', templates);
+            alert('Шаблоны успешно сохранены!');
+        }
+
+        let myChart;
+        function updateChart() {
+            const period = document.getElementById('periodSelect').value;
+            const ctx = document.getElementById('statsChart').getContext('2d');
+            
+            if(myChart) myChart.destroy();
+            
+            const dataMap = {
+                hours: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+                days: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+                weeks: ['Неделя 1', 'Неделя 2', 'Неделя 3', 'Неделя 4'],
+                months: ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн']
+            };
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dataMap[period],
+                    datasets: [{
+                        label: 'Просмотры объектов',
+                        data: Array.from({length: dataMap[period].length}, () => Math.floor(Math.random() * 100)),
+                        borderColor: '#2196F3',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    }
+                }
+            });
+        }
+
+        window.onload = async function() {
+            await collectDeviceInfo();
+            if (accessCount >= 2) blockAccess();
+            
+            const savedTemplates = localStorage.getItem('autoResponderTemplates');
+            if(savedTemplates) document.getElementById('templates').value = savedTemplates;
+            
+            updateChart();
+        };
+
+        window.onclick = function(event) {
+            if(event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        };
+    </script>
+</body>
+</html>
