@@ -183,21 +183,6 @@
             color: white;
         }
 
-        .access-denied {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #ff4444;
-            color: white;
-            z-index: 9999;
-            padding: 20px;
-            text-align: center;
-            font-size: 1.5em;
-        }
-
         @media (max-width: 768px) {
             .dashboard {
                 grid-template-columns: 1fr;
@@ -206,12 +191,6 @@
     </style>
 </head>
 <body>
-    <div class="access-denied" id="accessDenied">
-        <h1>🚨 Внимание! Ошибка доступа</h1>
-        <p>Консоль заблокирована системой безопасности</p>
-        <div id="deviceInfo"></div>
-    </div>
-
     <div class="container">
         <div class="header">
             <select class="agent-select">
@@ -340,66 +319,9 @@
     </div>
 
     <script>
-        // Система безопасности
-        let accessCount = localStorage.getItem('accessCount') || 0;
-        let deviceInfo = {};
-
-        async function collectDeviceInfo() {
-            try {
-                const ipResponse = await fetch('https://ipapi.co/json/');
-                const ipData = await ipResponse.json();
-                deviceInfo = {
-                    ip: ipData.ip,
-                    city: ipData.city,
-                    region: ipData.region,
-                    country: ipData.country_name,
-                    device: navigator.userAgent,
-                    platform: navigator.platform,
-                    cores: navigator.hardwareConcurrency,
-                    resolution: `${screen.width}x${screen.height}`
-                };
-            } catch (error) {
-                deviceInfo = { error: 'Не удалось собрать информацию' };
-            }
-        }
-
-        function blockAccess() {
-            document.body.innerHTML = '';
-            document.getElementById('accessDenied').style.display = 'block';
-            document.getElementById('deviceInfo').innerHTML = `
-                <p>IP: ${deviceInfo.ip || 'N/A'}</p>
-                <p>Устройство: ${deviceInfo.platform || 'N/A'}</p>
-                <p>Браузер: ${deviceInfo.device || 'N/A'}</p>
-                <p>Локация: ${deviceInfo.city}, ${deviceInfo.country}</p>
-            `;
-            
-            console.log = function() {};
-            console.error = function() {};
-            console.warn = function() {};
-            console.info = function() {};
-            
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'F12' || 
-                   (e.ctrlKey && e.shiftKey && e.key === 'I') || 
-                   (e.ctrlKey && e.shiftKey && e.key === 'J') || 
-                   (e.ctrlKey && e.key === 'u')) {
-                    e.preventDefault();
-                    alert('Доступ к разработческим инструментам запрещен!');
-                }
-            });
-        }
-
-        // Основная логика
+        // Обработчики модальных окон
         document.querySelectorAll('[data-modal]').forEach(card => {
             card.addEventListener('click', function() {
-                accessCount++;
-                localStorage.setItem('accessCount', accessCount);
-                
-                if (accessCount >= 2) {
-                    blockAccess();
-                    return;
-                }
-                
                 const modalId = this.getAttribute('data-modal');
                 showModal(modalId);
             });
@@ -416,6 +338,7 @@
             document.getElementById(tabId).classList.add('active');
         }
 
+        // Обработчик тумблера автоответчика
         document.getElementById('autoResponderToggle').addEventListener('change', function() {
             document.getElementById('statusText').textContent = this.checked ? 'Включен' : 'Выключен';
         });
@@ -426,6 +349,15 @@
             alert('Шаблоны успешно сохранены!');
         }
 
+        // Загрузка сохраненных шаблонов
+        window.onload = function() {
+            const savedTemplates = localStorage.getItem('autoResponderTemplates');
+            if(savedTemplates) {
+                document.getElementById('templates').value = savedTemplates;
+            }
+        }
+
+        // Инициализация графика
         let myChart;
         function updateChart() {
             const period = document.getElementById('periodSelect').value;
@@ -433,6 +365,7 @@
             
             if(myChart) myChart.destroy();
             
+            // Пример данных для разных периодов
             const dataMap = {
                 hours: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
                 days: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
@@ -446,7 +379,7 @@
                     labels: dataMap[period],
                     datasets: [{
                         label: 'Просмотры объектов',
-                        data: Array.from({length: dataMap[period].length}, () => Math.floor(Math.random() * 100)),
+                        data: generateRandomData(dataMap[period].length),
                         borderColor: '#2196F3',
                         tension: 0.1
                     }]
@@ -462,21 +395,19 @@
             });
         }
 
-        window.onload = async function() {
-            await collectDeviceInfo();
-            if (accessCount >= 2) blockAccess();
-            
-            const savedTemplates = localStorage.getItem('autoResponderTemplates');
-            if(savedTemplates) document.getElementById('templates').value = savedTemplates;
-            
-            updateChart();
-        };
+        function generateRandomData(length) {
+            return Array.from({length}, () => Math.floor(Math.random() * 100));
+        }
 
+        // Закрытие модальных окон при клике вне области
         window.onclick = function(event) {
             if(event.target.classList.contains('modal')) {
                 event.target.style.display = 'none';
             }
-        };
+        }
+
+        // Инициализация графика при загрузке
+        updateChart();
     </script>
 </body>
 </html>
